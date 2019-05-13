@@ -2,23 +2,157 @@
 <html>
 
 <head>
-    <meta charset=utf-8>
-    <title>My first three.js app</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <title>three.js css2d - label</title>
     <style>
         body {
+            background-color: #000;
             margin: 0;
+            overflow: hidden;
         }
 
-        canvas {
+        #info {
+            position: absolute;
+            top: 0px;
             width: 100%;
-            height: 100%;
+            color: #FFF;
+            padding: 5px;
+            font-family: Monospace;
+            font-size: 13px;
+            text-align: center;
+            z-index: 1;
+        }
+
+        .label {
+            color: #FFF;
+            font-family: sans-serif;
+            padding: 2px;
+            background: rgba(0, 0, 0, .6);
+        }
+
+        a {
+            color: #000000;
         }
     </style>
 </head>
 
 <body>
-    <script src="three.js"></script>
-    <script type="module" src="index.js"></script>
+    <div id="info"><a href="http://threejs.org" target="_blank" rel="noopener">three.js</a> - three.js css2d - label
+    </div>
+
+    <script src="js/three.js"></script>
+    <script src="js/orbit.js"></script>
+    <script src="js/css2d.js"></script>
+
+    <script>
+        var camera, scene, renderer, labelRenderer;
+        var clock = new THREE.Clock();
+        var earth, moon;
+        init();
+        animate();
+
+
+        function init() {
+            var EARTH_RADIUS = 1;
+            var MOON_RADIUS = 0.27;
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 1000);
+            camera.position.set(5, 3, 10);
+            var controls = new THREE.OrbitControls(camera);
+            scene = new THREE.Scene();
+            var dirLight0 = new THREE.DirectionalLight(0xffffff);
+            dirLight0.position.set(1, 1, 1);
+            scene.add(dirLight0);
+            scene.add(new THREE.AmbientLight(0x404040));
+
+            let baseVec = new THREE.Vector3(0, -2, 0);
+            let penVec = new THREE.Vector3(0, 10, 10).normalize();
+            let strVec = new THREE.Vector3(8.6602540, 10, -5).normalize();
+            let neoVec = new THREE.Vector3(-8.6602540, 10, -5).normalize();
+
+            // load textures
+            var loader = new THREE.TextureLoader();
+            var axisSprites = [];
+            axisSprites.push(new THREE.SpriteMaterial({ map: loader.load("img/0.0001.png"), color: 0xffffff }));
+            axisSprites.push(new THREE.SpriteMaterial({ map: loader.load("img/0.001.png"), color: 0xffffff }));
+            axisSprites.push(new THREE.SpriteMaterial({ map: loader.load("img/0.01.png"), color: 0xffffff }));
+            axisSprites.push(new THREE.SpriteMaterial({ map: loader.load("img/0.1.png"), color: 0xffffff }));
+            axisSprites.push(new THREE.SpriteMaterial({ map: loader.load("img/1.png"), color: 0xffffff }));
+            axisSprites.push(new THREE.SpriteMaterial({ map: loader.load("img/10.png"), color: 0xffffff }));
+            axisSprites.push(new THREE.SpriteMaterial({ map: loader.load("img/100.png"), color: 0xffffff }));
+            axisSprites.push(new THREE.SpriteMaterial({ map: loader.load("img/1000.png"), color: 0xffffff }));
+
+            function create_axis(color, base, dir) {
+                let mat = new THREE.LineBasicMaterial({ color, linewidth: 1 });
+                let geometry = new THREE.Geometry();
+                geometry.vertices.push(base, dir.clone().multiplyScalar(axisSprites.length + 1).add(base));
+                scene.add(new THREE.Line(geometry, mat));
+                for (let i = 0; i < axisSprites.length; i++) {
+                    let sprite = new THREE.Sprite(axisSprites[i]);
+                    sprite.position.copy(dir.clone().multiplyScalar(i + 1).add(base));
+                    sprite.scale.set(0.5, 0.125, 0);
+                    sprite.center.set(0, 0.5);
+                    scene.add(sprite);
+                }
+            }
+
+            create_axis(0xff0000, baseVec, penVec);
+            create_axis(0x00ff00, baseVec, strVec);
+            create_axis(0x0000ff, baseVec, neoVec);
+
+
+
+
+            //
+            var earthGeometry = new THREE.SphereBufferGeometry(EARTH_RADIUS, 16, 16);
+            var earthMaterial = new THREE.MeshPhongMaterial({
+                specular: 0x333333,
+                shininess: 5,
+                color: 0x00ff00
+            });
+            earth = new THREE.Mesh(earthGeometry, earthMaterial);
+            scene.add(earth);
+            var moonGeometry = new THREE.SphereBufferGeometry(MOON_RADIUS, 16, 16);
+            var moonMaterial = new THREE.MeshPhongMaterial({
+                shininess: 5,
+                color: 0xff00ff
+            });
+            moon = new THREE.Mesh(moonGeometry, moonMaterial);
+            scene.add(moon);
+            //
+            var earthDiv = document.createElement('div');
+            earthDiv.className = 'label';
+            earthDiv.textContent = 'Earth';
+            earthDiv.style.marginTop = '-1em';
+            var earthLabel = new THREE.CSS2DObject(earthDiv);
+            earthLabel.position.set(0, EARTH_RADIUS, 0);
+            earth.add(earthLabel);
+            var moonDiv = document.createElement('div');
+            moonDiv.className = 'label';
+            moonDiv.textContent = 'Moon';
+            moonDiv.style.marginTop = '-1em';
+            var moonLabel = new THREE.CSS2DObject(moonDiv);
+            moonLabel.position.set(0, MOON_RADIUS, 0);
+            moon.add(moonLabel);
+            //
+            renderer = new THREE.WebGLRenderer();
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
+            labelRenderer = new THREE.CSS2DRenderer();
+            labelRenderer.setSize(window.innerWidth, window.innerHeight);
+            labelRenderer.domElement.style.position = 'absolute';
+            labelRenderer.domElement.style.top = 0;
+            document.body.appendChild(labelRenderer.domElement);
+        }
+        function animate() {
+            requestAnimationFrame(animate);
+            var elapsed = clock.getElapsedTime();
+            moon.position.set(Math.sin(elapsed) * 5, 0, Math.cos(elapsed) * 5);
+            renderer.render(scene, camera);
+            labelRenderer.render(scene, camera);
+        }
+    </script>
 </body>
 
 </html>
